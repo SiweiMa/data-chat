@@ -22,3 +22,5 @@ venv/
 .pytest_cache/
 .coverage
 htmlcov/
+
+step*.md

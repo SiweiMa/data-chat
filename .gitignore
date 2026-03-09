@@ -23,4 +23,5 @@ venv/
 .coverage
 htmlcov/
 
-step*.md
+# Teaching step docs (local reference only)
+docs/step*.md

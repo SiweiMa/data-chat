@@ -22,3 +22,6 @@ venv/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Teaching step docs (local reference only)
+docs/step*.md

@@ -29,7 +29,6 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     import snowflake.connector
-
     from data_chat.client import SnowflakeClient
 
 # The single ContextVar that stores the current client.

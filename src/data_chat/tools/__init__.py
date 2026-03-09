@@ -1,0 +1,14 @@
+"""Tools for querying Snowflake metadata and data.
+
+Mirrors: datahub-agent-context/mcp_tools/__init__.py
+
+Each tool is a plain function that calls get_connection() from context.
+Framework builders (LangChain, Google ADK) wrap these with
+create_context_wrapper() to inject the client automatically.
+"""
+
+from data_chat.tools.search import search
+
+__all__ = [
+    "search",
+]

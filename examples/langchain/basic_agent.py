@@ -1,67 +1,122 @@
 #!/usr/bin/env python3
 """
-Basic LangChain agent example using data-chat tools with AWS Bedrock.
+Basic LangChain agent example using data-chat tools.
 
-This example demonstrates how to create a LangChain agent that can:
-- Search for tables in Snowflake
-- Get detailed column information
-- Execute read-only SQL queries
+Supports three LLM backends:
+1. SoFi LLM Proxy (default) — uses llm-proxy-keys CLI + ChatAnthropic
+2. AWS Bedrock — uses boto3 + ChatBedrock
+3. Direct Anthropic API — uses ANTHROPIC_API_KEY + ChatAnthropic
 
 Prerequisites:
-    pip install 'data-chat[langchain]' langchain-aws boto3
-    AWS credentials configured (via ~/.aws/credentials or environment variables)
+    pip install 'data-chat[langchain]' langchain-anthropic
     Snowflake connection configured via environment variables
 
 Environment variables (Snowflake):
     SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_WAREHOUSE,
     SNOWFLAKE_DATABASE, SNOWFLAKE_SCHEMA
-    Optional: SNOWFLAKE_ROLE, SNOWFLAKE_AUTHENTICATOR, SNOWFLAKE_PRIVATE_KEY_PATH
 
-Environment variables (AWS):
-    AWS_REGION: AWS region for Bedrock (default: us-west-2)
+Environment variables (LLM — pick one):
+    Option A: SoFi LLM Proxy (default, no env vars needed)
+    Option B: AWS Bedrock — set AWS_REGION, requires langchain-aws + boto3
+              Set LLM_BACKEND=bedrock to use this
+    Option C: Direct Anthropic API — set ANTHROPIC_API_KEY
 """
 
 import os
+import subprocess
 
-import boto3
 from langchain.agents import create_agent
-from langchain_aws import ChatBedrock
 
 from data_chat.client import SnowflakeClient
 from data_chat.langchain_tools import build_langchain_tools
+
+LLM_PROXY_BASE_URL = "https://internal.sofitest.com/llm-proxy"
+LLM_PROXY_KEYS_CLI = os.path.expanduser("~/.local/bin/llm-proxy-keys")
+LLM_PROXY_MODEL = "claude-sonnet-4-6"
+
+
+def _get_proxy_api_key():
+    """Get API key from SoFi's llm-proxy-keys CLI."""
+    if not os.path.exists(LLM_PROXY_KEYS_CLI):
+        return None
+    try:
+        result = subprocess.run(
+            [LLM_PROXY_KEYS_CLI, "--no-refresh", "--quiet"],
+            capture_output=True, text=True, timeout=5,
+        )
+        key = result.stdout.strip()
+        return key if key and key.startswith("sk-") else None
+    except Exception:
+        return None
+
+
+def create_llm():
+    """Create a LangChain chat model, preferring SoFi LLM Proxy."""
+    backend = os.getenv("LLM_BACKEND", "auto")
+
+    # Option A: SoFi LLM Proxy (default)
+    if backend in ("auto", "proxy"):
+        proxy_key = _get_proxy_api_key()
+        if proxy_key:
+            from langchain_anthropic import ChatAnthropic
+
+            print(f"Using SoFi LLM Proxy: {LLM_PROXY_BASE_URL}")
+            return ChatAnthropic(
+                model=LLM_PROXY_MODEL,
+                anthropic_api_key=proxy_key,
+                anthropic_api_url=LLM_PROXY_BASE_URL,
+                max_tokens=4096,
+                temperature=0,
+            )
+
+    # Option B: AWS Bedrock
+    if backend in ("auto", "bedrock") and os.getenv("AWS_REGION"):
+        import boto3
+        from langchain_aws import ChatBedrock
+
+        aws_region = os.getenv("AWS_REGION", "us-west-2")
+        print(f"Using AWS Bedrock in {aws_region}")
+        return ChatBedrock(
+            client=boto3.client("bedrock-runtime", region_name=aws_region),
+            model_id="us.anthropic.claude-haiku-4-5-20251001-v1:0",
+            model_kwargs={"max_tokens": 4096, "temperature": 0},
+        )
+
+    # Option C: Direct Anthropic API
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if api_key:
+        from langchain_anthropic import ChatAnthropic
+
+        print("Using direct Anthropic API")
+        return ChatAnthropic(
+            model="claude-sonnet-4-20250514",
+            anthropic_api_key=api_key,
+            max_tokens=4096,
+            temperature=0,
+        )
+
+    raise RuntimeError(
+        "No LLM backend found. Either:\n"
+        "  - Install llm-proxy-keys CLI (SoFi employees)\n"
+        "  - Set LLM_BACKEND=bedrock + AWS_REGION\n"
+        "  - Set ANTHROPIC_API_KEY"
+    )
 
 
 def main():
     """Run the basic agent example."""
     # Step 1: Connect to Snowflake
-    # One line — all config comes from env vars.
-    # Mirrors: DataHubClient.from_env() in DataHub's example.
     print("Connecting to Snowflake...")
     client = SnowflakeClient.from_env()
 
     # Step 2: Build tools
-    # One line — creates all 3 tools with context injection.
-    # Each tool's docstring becomes its LLM description automatically.
     tools = build_langchain_tools(client)
     print(f"Loaded {len(tools)} tools: {[t.name for t in tools]}")
 
-    # Step 3: Initialize LLM
-    aws_region = os.getenv("AWS_REGION", "us-west-2")
-    print(f"Connecting to AWS Bedrock in {aws_region}...")
-
-    bedrock_runtime = boto3.client(
-        service_name="bedrock-runtime", region_name=aws_region
-    )
-
-    model = ChatBedrock(
-        client=bedrock_runtime,
-        model_id="us.anthropic.claude-haiku-4-5-20251001-v1:0",
-        model_kwargs={"max_tokens": 4096, "temperature": 0},
-    )
+    # Step 3: Initialize LLM (auto-detects backend)
+    model = create_llm()
 
     # Step 4: Create agent
-    # The system prompt guides the LLM's behavior.
-    # Tool docstrings (from Steps 4-6) tell it HOW to use each tool.
     system_prompt = """You are a helpful data analyst assistant with access to Snowflake.
 
 You can help users:
@@ -76,8 +131,6 @@ Be concise but informative in your responses."""
 
     agent = create_agent(model, tools=tools, system_prompt=system_prompt)
 
-    # Example queries that demonstrate the tool chain:
-    #   search() → get_tables() → run_query()
     examples = [
         "Find all tables related to 'customers'",
         "What columns does the top customer table have?",
@@ -92,7 +145,6 @@ Be concise but informative in your responses."""
     for i, example in enumerate(examples, 1):
         print(f"  {i}. {example}")
 
-    # Interactive mode
     print("\n" + "=" * 80)
     print("Interactive Mode - Type 'quit' to exit")
     print("=" * 80)

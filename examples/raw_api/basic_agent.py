@@ -160,7 +160,11 @@ def run_agent(
     ]
 
     for turn in range(MAX_TURNS):
-        # Call Claude API
+        print(f"\n{'─' * 60}")
+        print(f"  Turn {turn + 1}/{MAX_TURNS}")
+        print(f"{'─' * 60}")
+        print(f"  Sending {len(messages)} message(s) to Claude...")
+
         response = client_anthropic.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=4096,
@@ -169,13 +173,22 @@ def run_agent(
             messages=messages,
         )
 
-        # Check if Claude wants to call tools
+        print(f"  stop_reason : {response.stop_reason}")
+        print(f"  usage       : input={response.usage.input_tokens}, output={response.usage.output_tokens}")
+        print(f"  content blocks ({len(response.content)}):")
+
+        for i, block in enumerate(response.content):
+            if block.type == "text":
+                print(f"    [{i}] text: \"{block.text}\"")
+            elif block.type == "tool_use":
+                print(f"    [{i}] tool_use: {block.name}(id={block.id})")
+                print(f"         input: {json.dumps(block.input, default=str)}")
+            else:
+                print(f"    [{i}] {block.type}: {block}")
+
         if response.stop_reason == "tool_use":
-            # Claude returned one or more tool_use blocks
-            # Add Claude's full response to conversation history
             messages.append({"role": "assistant", "content": response.content})
 
-            # Execute each tool call and collect results
             tool_results = []
             for block in response.content:
                 if block.type == "tool_use":
@@ -183,10 +196,8 @@ def run_agent(
                     tool_input = block.input
                     tool_id = block.id
 
-                    print(f"  [Tool call] {tool_name}({json.dumps(tool_input, default=str)[:100]}...)")
+                    print(f"\n  ▶ Executing {tool_name}({json.dumps(tool_input, default=str)})")
 
-                    # Execute the tool within our DataChatContext
-                    # This is what create_context_wrapper does automatically
                     try:
                         with DataChatContext(sf_client):
                             func = tool_dispatch[tool_name]
@@ -195,18 +206,18 @@ def run_agent(
                     except Exception as e:
                         result_str = json.dumps({"error": str(e)})
 
+                    print(f"  ◀ Result: {result_str}")
+
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": tool_id,
                         "content": result_str,
                     })
 
-            # Send tool results back to Claude
             messages.append({"role": "user", "content": tool_results})
 
         else:
-            # Claude returned a final text response (stop_reason="end_turn")
-            # Extract the text from the response
+            print(f"\n  ✓ Final response (stop_reason={response.stop_reason})")
             for block in response.content:
                 if hasattr(block, "text"):
                     return block.text

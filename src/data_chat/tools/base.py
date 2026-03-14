@@ -17,9 +17,39 @@ WHY CENTRALIZE THIS:
 """
 
 import logging
+import re
 from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
+
+# Regex for validating Snowflake identifiers (database, schema, table names).
+# Allows dotted names like "DB.SCHEMA.TABLE". Each part must be alphanumeric + underscore.
+# Shared by lineage.py and navigation.py to prevent SQL injection in string-literal contexts.
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+){0,2}$")
+
+
+def validate_identifier(name: str, label: str = "identifier") -> str:
+    """Validate and uppercase a Snowflake identifier.
+
+    Used for contexts where bind parameters are not supported (e.g., GET_LINEAGE
+    requires string literals, INFORMATION_SCHEMA.SCHEMATA requires embedded database names).
+
+    Args:
+        name: The identifier to validate (e.g., "DB.SCHEMA.TABLE")
+        label: Human-readable label for error messages (e.g., "object_name")
+
+    Returns:
+        The uppercased identifier.
+
+    Raises:
+        ValueError: If the identifier contains invalid characters.
+    """
+    if not _IDENTIFIER_RE.match(name):
+        raise ValueError(
+            f"Invalid {label}: {name!r}. "
+            f"Must contain only alphanumeric characters, underscores, and dots."
+        )
+    return name.upper()
 
 
 def execute_query(

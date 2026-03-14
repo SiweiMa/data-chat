@@ -44,6 +44,7 @@ except ImportError as e:
         "Install with: pip install 'data-chat[langchain]'"
     ) from e
 
+from data_chat.tools.lineage import get_lineage
 from data_chat.tools.query import run_query
 from data_chat.tools.search import search
 from data_chat.tools.tables import get_tables
@@ -83,6 +84,7 @@ def build_langchain_tools(
     tools: list[BaseTool] = [
         tool(create_context_wrapper(search, client)),
         tool(create_context_wrapper(get_tables, client)),
+        tool(create_context_wrapper(get_lineage, client)),
     ]
 
     if include_query_execution:

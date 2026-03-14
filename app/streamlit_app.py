@@ -11,6 +11,7 @@ import streamlit as st
 
 from data_chat.agent import NoOpCallbacks, run_agent
 from data_chat.client import SnowflakeClient
+from data_chat.memory import trim_messages
 from data_chat.exceptions import (
     LLMAPIError,
     LLMConnectionError,
@@ -161,6 +162,10 @@ if prompt := st.chat_input("Ask about your data..."):
         callbacks = StreamlitCallbacks(status)
 
         try:
+            # Trim oldest messages to stay within context window
+            if st.session_state.agent_messages:
+                trim_messages(st.session_state.agent_messages)
+
             answer, updated_messages = run_agent(
                 st.session_state.llm_client,
                 st.session_state.llm_model,

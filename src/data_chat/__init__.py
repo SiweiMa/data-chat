@@ -26,6 +26,7 @@ from data_chat.exceptions import (
     SnowflakeConnectionError,
     SnowflakeSessionExpiredError,
 )
+from data_chat.memory import trim_messages
 from data_chat.utils import create_context_wrapper
 
 __all__ = [
@@ -42,4 +43,5 @@ __all__ = [
     "LLMConnectionError",
     "LLMRateLimitError",
     "LLMAPIError",
+    "trim_messages",
 ]

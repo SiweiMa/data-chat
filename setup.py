@@ -33,12 +33,17 @@ google_adk_requirements = {
     "google-adk>=1.0.0,<2.0.0",
 }
 
+agent_requirements = {
+    "anthropic>=0.40.0,<1.0.0",
+}
+
 dev_requirements = {
     "ruff==0.11.7",
     "mypy==1.17.1",
     "pytest>=8.3.4,<9.0.0",
     *langchain_requirements,
     *google_adk_requirements,
+    *agent_requirements,
 }
 
 setuptools.setup(
@@ -58,5 +63,6 @@ setuptools.setup(
         "dev": list(dev_requirements),
         "langchain": list(langchain_requirements),
         "google-adk": list(google_adk_requirements),
+        "agent": list(agent_requirements),
     },
 )

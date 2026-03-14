@@ -45,6 +45,7 @@ except ImportError as e:
     ) from e
 
 from data_chat.tools.lineage import get_lineage
+from data_chat.tools.navigation import list_databases, list_schemas
 from data_chat.tools.query import run_query
 from data_chat.tools.search import search
 from data_chat.tools.tables import get_tables
@@ -82,6 +83,8 @@ def build_langchain_tools(
     # create_context_wrapper() injects client before each call.
     # Combined: tool(create_context_wrapper(search, client))
     tools: list[BaseTool] = [
+        tool(create_context_wrapper(list_databases, client)),
+        tool(create_context_wrapper(list_schemas, client)),
         tool(create_context_wrapper(search, client)),
         tool(create_context_wrapper(get_tables, client)),
         tool(create_context_wrapper(get_lineage, client)),

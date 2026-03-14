@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from data_chat.client import SnowflakeClient
 
 from data_chat.tools.lineage import get_lineage
+from data_chat.tools.navigation import list_databases, list_schemas
 from data_chat.tools.query import run_query
 from data_chat.tools.search import search
 from data_chat.tools.tables import get_tables
@@ -61,6 +62,8 @@ def build_google_adk_tools(
     # No @tool decorator needed — ADK takes plain callables.
     # Just wrap with create_context_wrapper to inject client.
     tools: List[Callable] = [
+        create_context_wrapper(list_databases, client),
+        create_context_wrapper(list_schemas, client),
         create_context_wrapper(search, client),
         create_context_wrapper(get_tables, client),
         create_context_wrapper(get_lineage, client),

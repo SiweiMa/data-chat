@@ -29,14 +29,14 @@ def mock_client():
 
 
 def test_google_adk_returns_correct_count(mock_client):
-    """Should return 4 tools with query execution, 3 without."""
+    """Should return 6 tools with query execution, 5 without."""
     from data_chat.google_adk_tools import build_google_adk_tools
 
     tools = build_google_adk_tools(mock_client, include_query_execution=True)
-    assert len(tools) == 4
+    assert len(tools) == 6
 
     tools_safe = build_google_adk_tools(mock_client, include_query_execution=False)
-    assert len(tools_safe) == 3
+    assert len(tools_safe) == 5
 
 
 def test_google_adk_tool_names(mock_client):
@@ -49,6 +49,8 @@ def test_google_adk_tool_names(mock_client):
     assert "get_tables" in names
     assert "run_query" in names
     assert "get_lineage" in names
+    assert "list_databases" in names
+    assert "list_schemas" in names
 
 
 def test_google_adk_excludes_run_query(mock_client):
@@ -64,6 +66,8 @@ def test_google_adk_excludes_run_query(mock_client):
     assert "search" in names
     assert "get_tables" in names
     assert "get_lineage" in names
+    assert "list_databases" in names
+    assert "list_schemas" in names
 
 
 def test_google_adk_preserves_docstrings(mock_client):
@@ -139,6 +143,8 @@ def test_langchain_builder_if_available(mock_client):
     assert "get_tables" in tool_names
     assert "run_query" in tool_names
     assert "get_lineage" in tool_names
+    assert "list_databases" in tool_names
+    assert "list_schemas" in tool_names
 
 
 def test_langchain_excludes_run_query_if_available(mock_client):
@@ -153,3 +159,5 @@ def test_langchain_excludes_run_query_if_available(mock_client):
     assert "run_query" not in tool_names
     assert "search" in tool_names
     assert "get_lineage" in tool_names
+    assert "list_databases" in tool_names
+    assert "list_schemas" in tool_names

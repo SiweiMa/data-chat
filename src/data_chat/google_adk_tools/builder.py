@@ -19,6 +19,7 @@ from data_chat.utils import create_context_wrapper
 if TYPE_CHECKING:
     from data_chat.client import SnowflakeClient
 
+from data_chat.tools.lineage import get_lineage
 from data_chat.tools.query import run_query
 from data_chat.tools.search import search
 from data_chat.tools.tables import get_tables
@@ -62,6 +63,7 @@ def build_google_adk_tools(
     tools: List[Callable] = [
         create_context_wrapper(search, client),
         create_context_wrapper(get_tables, client),
+        create_context_wrapper(get_lineage, client),
     ]
 
     if include_query_execution:

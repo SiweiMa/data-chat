@@ -37,6 +37,11 @@ agent_requirements = {
     "anthropic>=0.40.0,<1.0.0",
 }
 
+streamlit_requirements = {
+    "streamlit>=1.30.0,<2.0.0",
+    *agent_requirements,
+}
+
 dev_requirements = {
     "ruff==0.11.7",
     "mypy==1.17.1",
@@ -64,5 +69,6 @@ setuptools.setup(
         "langchain": list(langchain_requirements),
         "google-adk": list(google_adk_requirements),
         "agent": list(agent_requirements),
+        "streamlit": list(streamlit_requirements),
     },
 )

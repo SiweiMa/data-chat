@@ -44,6 +44,7 @@ class SnowflakeClient:
         authenticator: Optional[str] = None,
         private_key_path: Optional[str] = None,
         password: Optional[str] = None,
+        client_session_keep_alive: bool = True,
     ):
         connect_kwargs: dict = {
             "account": account,
@@ -51,6 +52,7 @@ class SnowflakeClient:
             "warehouse": warehouse,
             "database": database,
             "schema": schema,
+            "client_session_keep_alive": client_session_keep_alive,
         }
         if role:
             connect_kwargs["role"] = role
@@ -154,6 +156,7 @@ class SnowflakeClient:
             authenticator=os.environ.get("SNOWFLAKE_AUTHENTICATOR"),
             private_key_path=os.environ.get("SNOWFLAKE_PRIVATE_KEY_PATH"),
             password=os.environ.get("SNOWFLAKE_PASSWORD"),
+            client_session_keep_alive=True,
         )
 
     @property

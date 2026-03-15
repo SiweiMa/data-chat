@@ -123,7 +123,19 @@ class PrintCallbacks(NoOpCallbacks):
 
 
 def _python_type_to_json_schema(annotation: Any) -> dict:
-    """Convert a Python type annotation to a JSON Schema type."""
+    """Convert a Python type annotation to a JSON Schema type.
+
+    Example::
+
+        >>> _python_type_to_json_schema(str)
+        {'type': 'string'}
+        >>> _python_type_to_json_schema(int)
+        {'type': 'integer'}
+        >>> _python_type_to_json_schema(List[str])
+        {'type': 'array', 'items': {'type': 'string'}}
+        >>> _python_type_to_json_schema(bool)
+        {'type': 'boolean'}
+    """
     if annotation is inspect.Parameter.empty or annotation is Any:
         return {"type": "string"}
 
@@ -158,6 +170,25 @@ def function_to_tool_schema(func: Callable) -> dict:
     - name: function name (Claude uses this to call it)
     - description: docstring (Claude reads this to decide WHEN to call it)
     - input_schema: JSON Schema derived from function signature
+
+    Example::
+
+        >>> def search(query: str, limit: int = 10) -> dict:
+        ...     '''Find tables matching a keyword.'''
+        ...     ...
+        >>> function_to_tool_schema(search)
+        {
+            'name': 'search',
+            'description': 'Find tables matching a keyword.',
+            'input_schema': {
+                'type': 'object',
+                'properties': {
+                    'query': {'type': 'string'},
+                    'limit': {'type': 'integer'},
+                },
+                'required': ['query'],
+            },
+        }
     """
     sig = inspect.signature(func)
     docstring = inspect.getdoc(func) or ""
@@ -278,8 +309,10 @@ def run_agent(
 
         cb.on_llm_response(response)
 
-        # Serialize ContentBlocks to dicts for JSON-serializable message history
-        content = [block.model_dump() for block in response.content]
+        # Serialize ContentBlocks to dicts for JSON-serializable message history.
+        # exclude_none=True strips fields like "caller": null that some proxies
+        # (e.g., SoFi LiteLLM) reject with 400 errors.
+        content = [block.model_dump(exclude_none=True) for block in response.content]
         messages.append({"role": "assistant", "content": content})
 
         if response.stop_reason == "tool_use":

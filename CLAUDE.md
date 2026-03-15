@@ -5,7 +5,7 @@ AI agent tools for querying Snowflake, modeled after [datahub-agent-context](htt
 ## Essential Commands
 
 ```bash
-# Run all tests (54 tests, ~0.3s)
+# Run all tests (101 tests, ~2s)
 PYTHONPATH=src python3 -m pytest tests/unit/ -v
 
 # Run a specific test file
@@ -25,20 +25,29 @@ ruff format src/ tests/
 
 ```
 src/data_chat/
+├── agent.py               # run_agent() loop + AgentCallbacks protocol
+├── llm.py                 # LLM client factory (SoFi Proxy / Anthropic)
+├── memory.py              # trim_messages() — sliding window for context
+├── exceptions.py          # DataChatError hierarchy
 ├── client.py              # SnowflakeClient — connection wrapper
 ├── context.py             # contextvars — client injection (THE core pattern)
 ├── utils.py               # create_context_wrapper — bridge to frameworks
 ├── tools/
-│   ├── base.py            # execute_query + clean_response
+│   ├── base.py            # execute_query + clean_response + validate_identifier
 │   ├── helpers.py         # token budget, sanitization, truncation
 │   ├── _token_estimator.py # fast token counting
+│   ├── navigation.py      # list_databases, list_schemas
 │   ├── search.py          # search() — discover tables
 │   ├── tables.py          # get_tables() — column details
+│   ├── lineage.py         # get_lineage() — data lineage
 │   └── query.py           # run_query() — read-only SQL execution
 ├── langchain_tools/
 │   └── builder.py         # build_langchain_tools(client) → List[BaseTool]
 └── google_adk_tools/
     └── builder.py         # build_google_adk_tools(client) → List[Callable]
+
+app/
+└── streamlit_app.py       # Streamlit web chat UI
 ```
 
 ### How It Works
@@ -50,8 +59,10 @@ src/data_chat/
 ### Tool Chain
 
 ```
-search("customer") → get_tables(["DB.SCH.CUSTOMERS"]) → run_query("SELECT ...")
-   find it              zoom in                            see data
+list_databases → list_schemas → search("customer") → get_tables([...]) → run_query("SELECT ...")
+   explore        narrow down      find it              zoom in              see data
+
+get_lineage("DB.SCH.TABLE", direction="UPSTREAM") → trace data provenance
 ```
 
 ## Adding a New Tool
